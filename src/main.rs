@@ -5,7 +5,6 @@ use sdl2::keyboard::Keycode;
 use sdl2::rect::Point;
 use sdl2::rect::Rect;
 use std::time::Duration;
-mod visual;
 mod vars;
 
 fn main() {
@@ -48,7 +47,7 @@ fn main() {
             for y in 0..p_food[0].len(){
                 let food = p_food[x][y] != 0;
                 let home = p_home[x][y] != 0;
-                let tstone = stone[x][y] == 1;
+                let tstone = stones[x][y] == 1;
 
                 if tstone {
                     canvas.set_draw_color(Color::RGB(60, 56, 54));
@@ -76,6 +75,9 @@ fn main() {
                 Event::Quit {..}  => {
                     break 'running
                 },
+                Event::MouseButtonDown{x, y, ..} => {
+                    stones = make_stones((x / vars::BSX) as i32, (y / vars::BSY) as i32, stones);
+                }
                 _ => {}
             }
         }
@@ -93,4 +95,18 @@ fn printarr(arr: &Vec<Vec<i32>>) {
         }
         println!("{}", strx);
     }
+}
+
+fn make_stones(x :i32, y :i32, mut arr: Vec<Vec<i32>>) -> Vec<Vec<i32>>{
+    for xc in x - vars::RADIUS..x + vars::RADIUS {
+        for yc in y - vars::RADIUS..y + vars::RADIUS {
+            println!("X {}, Y {}, X² {}, Y² {}, R² {}", x, y, x.pow(2), y.pow(2), vars::RADIUS.pow(2));
+            if (xc - x).pow(2) + (yc - y).pow(2) <= vars::RADIUS.pow(2) {
+                println!("HERE");
+                arr[xc as usize][yc as usize] = 1;
+            }
+        }
+    }
+    return arr;
+
 }

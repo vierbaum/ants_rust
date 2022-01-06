@@ -1,11 +1,11 @@
 extern crate sdl2;
 use sdl2::pixels::Color;
 use sdl2::event::Event;
-use sdl2::keyboard::Keycode;
-use sdl2::rect::Point;
 use sdl2::rect::Rect;
 use std::time::Duration;
 mod vars;
+use ants::Ant;
+mod ants;
 
 fn main() {
     //initialize storage for strenght of pheromons
@@ -15,88 +15,90 @@ fn main() {
     //positions of stone
     let mut stones = vec![vec![0; vars::SIZEY as usize]; vars::SIZEX as usize];
 
-    //Vector of all pixels that have changed during loop
-    let mut changed_pixels :Vec<[i32; 2]> = Vec::new();
-
     //just for testing
     p_food[0][2] = 1;
     p_food[0][0] = 1;
+    p_food[0][1] = 2;
+    p_food[1][0] = 1;
     p_food[1][3] = 1;
     p_food[1][3] = 1;
     p_home[1][0] = 1;
     p_home[3][3] = 1;
     p_home[1][3] = 1;
-    printarr(&p_food);
+
+    let ant: Ant = Ant { position: [0, 0], path: vec![[0, 1]], mode: "food".to_string(), is_following_path: false };
+
+    ant.get_close(&p_food);
+    //printarr(&p_food);
 
     //start visual
     let sdl_context = sdl2::init().unwrap();
     let video_subsystem = sdl_context.video().unwrap();
 
-    let window = video_subsystem.window("rust-sdl2 demo", vars::WINDOWRES[0] as u32, vars::WINDOWRES[1] as u32)
+    let window = video_subsystem.window("ants", vars::WINDOWRES[0] as u32, vars::WINDOWRES[1] as u32)
         .position_centered()
         .build()
         .unwrap();
     let mut canvas = window.into_canvas().build().unwrap();
     let mut event_pump = sdl_context.event_pump().unwrap();
+
+    //set background color
     canvas.set_draw_color(Color::RGB(27, 28, 30));
     canvas.clear();
 
-    let mut first = true;
-    let mut mouse_pressed = false;
-    //the main loop
-    'running: loop {
-        //backgroung color
+    //looping through x, y to draw every pixel
+    for x in 0..p_food.len(){
+        for y in 0..p_food[0].len(){
+            let food = p_food[x][y] != 0;
+            let home = p_home[x][y] != 0;
 
-        if first {
-            //looping through x, y
-            for x in 0..p_food.len(){
-                for y in 0..p_food[0].len(){
-                    let food = p_food[x][y] != 0;
-                    let home = p_home[x][y] != 0;
-                    let tstone = stones[x][y] == 1;
-
-                    if tstone {
-                        canvas.set_draw_color(Color::RGB(60, 56, 54));
-                        canvas.fill_rect(Rect::new(x as i32 * vars::BSX, y as i32 * vars::BSY, vars::BSX as u32, vars::BSY as u32));
-                    } else {
-                        if food && !home{
-                            canvas.set_draw_color(Color::RGB(152, 151, 26));
-                            canvas.fill_rect(Rect::new(x as i32 * vars::BSX, y as i32 * vars::BSY, vars::BSX as u32, vars::BSY as u32));
-                        } else if !food && home {
-                            canvas.set_draw_color(Color::RGB(204, 36, 29));
-                            canvas.fill_rect(Rect::new(x as i32 * vars::BSX, y as i32 * vars::BSY, vars::BSX as u32, vars::BSY as u32));
-                        } else if food && home {
-                            canvas.set_draw_color(Color::RGB(250, 189, 47));
-                            canvas.fill_rect(Rect::new(x as i32 * vars::BSX, y as i32 * vars::BSY, vars::BSX as u32, vars::BSY as u32));
-                        }
-                    }
-
+            if stones[x][y] == 1 {
+                canvas.set_draw_color(Color::RGB(60, 56, 54));
+                canvas.fill_rect(Rect::new(x as i32 * vars::BSX, y as i32 * vars::BSY, vars::BSX as u32, vars::BSY as u32));
+            } else {
+                if food && !home{
+                    canvas.set_draw_color(Color::RGB(152, 151, 26));
+                    canvas.fill_rect(Rect::new(x as i32 * vars::BSX, y as i32 * vars::BSY, vars::BSX as u32, vars::BSY as u32));
+                } else if !food && home {
+                    canvas.set_draw_color(Color::RGB(204, 36, 29));
+                    canvas.fill_rect(Rect::new(x as i32 * vars::BSX, y as i32 * vars::BSY, vars::BSX as u32, vars::BSY as u32));
+                } else if food && home {
+                    canvas.set_draw_color(Color::RGB(250, 189, 47));
+                    canvas.fill_rect(Rect::new(x as i32 * vars::BSX, y as i32 * vars::BSY, vars::BSX as u32, vars::BSY as u32));
                 }
             }
-            first = false;
-        } else {
-            for i in 0..changed_pixels.len() {
-                let x :usize = changed_pixels[i][0] as usize;
-                let y :usize = changed_pixels[i][1] as usize;
 
-                let food = p_food[x][y] != 0;
-                let home = p_home[x][y] != 0;
-                let tstone = stones[x][y] == 1;
+        }
+    }
 
-                if tstone {
-                    canvas.set_draw_color(Color::RGB(60, 56, 54));
+    //Vector of all pixels that have changed during loop
+    let mut changed_pixels :Vec<[i32; 2]> = Vec::new();
+    let mut mouse_pressed = false;
+
+    //the main loop
+    'running: loop {
+
+        //looping through every changed pixel
+        for i in 0..changed_pixels.len() {
+            let x :usize = changed_pixels[i][0] as usize;
+            let y :usize = changed_pixels[i][1] as usize;
+
+            let food = p_food[x][y] != 0;
+            let home = p_home[x][y] != 0;
+
+            if stones[x][y] == 1 {
+                canvas.set_draw_color(Color::RGB(60, 56, 54));
+                canvas.fill_rect(Rect::new(x as i32 * vars::BSX, y as i32 * vars::BSY, vars::BSX as u32, vars::BSY as u32));
+            } else {
+                if food && !home{
+                    canvas.set_draw_color(Color::RGB(152, 151, 26));
                     canvas.fill_rect(Rect::new(x as i32 * vars::BSX, y as i32 * vars::BSY, vars::BSX as u32, vars::BSY as u32));
-                } else {
-                    if food && !home{
-                        canvas.set_draw_color(Color::RGB(152, 151, 26));
-                        canvas.fill_rect(Rect::new(x as i32 * vars::BSX, y as i32 * vars::BSY, vars::BSX as u32, vars::BSY as u32));
-                    } else if !food && home {
-                        canvas.set_draw_color(Color::RGB(204, 36, 29));
-                        canvas.fill_rect(Rect::new(x as i32 * vars::BSX, y as i32 * vars::BSY, vars::BSX as u32, vars::BSY as u32));
-                    } else if food && home {
-                        canvas.set_draw_color(Color::RGB(250, 189, 47));
-                        canvas.fill_rect(Rect::new(x as i32 * vars::BSX, y as i32 * vars::BSY, vars::BSX as u32, vars::BSY as u32));
-                    }
+                } else if !food && home {
+                    canvas.set_draw_color(Color::RGB(204, 36, 29));
+                    canvas.fill_rect(Rect::new(x as i32 * vars::BSX, y as i32 * vars::BSY, vars::BSX as u32, vars::BSY as u32));
+                } else if food && home {
+                    canvas.set_draw_color(Color::RGB(250, 189, 47));
+                    canvas.fill_rect(Rect::new(x as i32 * vars::BSX, y as i32 * vars::BSY, vars::BSX as u32, vars::BSY as u32));
                 }
             }
         }
@@ -113,7 +115,6 @@ fn main() {
                     changed_pixels = stone_new.1;
                 },
                 Event::MouseMotion{x, y, ..} => {
-                    println!("{} {}", x, y);
                     if mouse_pressed {
                         let stone_new = make_stones((x / vars::BSX) as i32, (y / vars::BSY) as i32, stones);
                         stones = stone_new.0;
@@ -126,10 +127,10 @@ fn main() {
                 _ => {}
             }
         }
-
         canvas.present();
         ::std::thread::sleep(Duration::new(0, 1_000_000_000u32 / 60));
     }
+
 }
 
 fn printarr(arr: &Vec<Vec<i32>>) {
@@ -157,5 +158,4 @@ fn make_stones(x :i32, y :i32, mut arr: Vec<Vec<i32>>) -> (Vec<Vec<i32>>, Vec<[i
         }
     }
     return (arr, changed_new);
-
 }
